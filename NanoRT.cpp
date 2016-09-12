@@ -87,10 +87,38 @@ static void nanortBoundsFunc(const NanoRT* nrts,
 static void traceRay(const NanoRT &nrt, RTCRay &_ray)
 {
   // Setup ray
+  nanort::Ray<float> ray;
+  // fill ray org and ray dir.
+  ray.org[0] = _ray.org[0];
+  ray.org[1] = _ray.org[1];
+  ray.org[2] = _ray.org[2];
+
+  ray.dir[0] = _ray.dir[0];
+  ray.dir[1] = _ray.dir[1];
+  ray.dir[2] = _ray.dir[2];
+
+  // fill minimum and maximum hit distance.
+  ray.min_t = _ray.tnear;
+  ray.max_t = _ray.tfar;
+
+  nanort::TriangleIntersector<> triangle_intersecter(nrt.vertex,
+                                                     nrt.uindex.get(),
+                                                     sizeof(float)*nrt.vtxSize);
 
   // Trace ray
+  nanort::BVHTraceOptions trace_options;
+  bool hit = nrt.accel.Traverse(ray, trace_options, triangle_intersecter);
 
   // Save hit data
+  if (hit) {
+    _ray.tfar   = triangle_intersecter.intersection.t;
+    _ray.primID = triangle_intersecter.intersection.prim_id;
+
+    // TODO: set normal...
+    _ray.Ng[0]  = 1.f;
+    _ray.Ng[1]  = 0.f;
+    _ray.Ng[2]  = 0.f;
+  }
 }
 
 static void nanortIntersectFunc(const NanoRT* nrts,
@@ -178,9 +206,6 @@ void NanoRT::finalize(Model *model)
   materialListData = getParamData("materialList");
   geom_materialID = getParam1i("geom.materialID",-1);
 
-  std::string saveFile = getParamString("saveFile", "");
-  std::string loadFile = getParamString("loadFile", "");
-
   this->index = (int*)indexData->data;
   this->vertex = (float*)vertexData->data;
   this->normal = normalData ? (float*)normalData->data : nullptr;
@@ -233,7 +258,26 @@ void NanoRT::finalize(Model *model)
 
   eMesh = rtcNewUserGeometry(embreeSceneHandle, 1);
 
-  // Setup triangle data for NanoRT
+  // Setup triangle data for NanoRT //
+
+  uindex = std::unique_ptr<unsigned int>(new unsigned int[indexData->size()]);
+  for (int i = 0; i < indexData->size(); ++i)
+    uindex.get()[i] = index[i];
+
+  nanort::BVHBuildOptions<float> options; // Use default option
+
+  triangle_mesh =
+      make_unique<nanort::TriangleMesh<float>>(vertex, uindex.get(),
+                                               sizeof(float) * vtxSize);
+
+  nanort::TriangleSAHPred<float> triangle_pred(vertex, uindex.get(),
+                                               sizeof(float) * vtxSize);
+  auto ret = accel.Build(numTris, options, *triangle_mesh, triangle_pred);
+
+  if (ret != true)
+    throw std::runtime_error("NanoRT: Failed to build BVH!");
+
+  // Finish Embree setup //
 
   rtcSetUserData(embreeSceneHandle, eMesh, this);
 

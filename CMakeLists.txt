@@ -24,6 +24,7 @@ if (OSPRAY_MODULE_NANORT AND NOT THIS_IS_MIC)
     NanoRT.cpp
     NanoRT.h
     NanoRT.ispc
+    nanort.h
     LINK
     ospray
   )

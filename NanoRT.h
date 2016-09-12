@@ -23,6 +23,10 @@
 #endif
 #include "ospray/common/Data.h"
 
+#include "nanort.h"
+
+#include <memory>
+
 namespace ospray {
 
 #ifdef USE_CPP_INTERFACE
@@ -64,6 +68,16 @@ namespace ospray {
     uint32    eMesh;   /*!< embree triangle mesh handle */
 
     void** ispcMaterialPtrs; /*!< pointers to ISPC equivalent materials */
+
+    // NanoRT stuff //
+
+    std::unique_ptr<unsigned int> uindex;
+
+    std::unique_ptr<nanort::TriangleMesh<float>> triangle_mesh;
+    nanort::BVHAccel<float,
+                     nanort::TriangleMesh<float>,
+                     nanort::TriangleSAHPred<float>,
+                     nanort::TriangleIntersector<>> accel;
 
 #ifdef USE_CPP_INTERFACE
     // ospray::cpp_renderer::Geometry interface ///////////////////////////////
