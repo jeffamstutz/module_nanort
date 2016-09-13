@@ -42,6 +42,10 @@ THE SOFTWARE.
 #include <string>
 #include <vector>
 
+//ospray
+#include "common/tasking/parallel_for.h"
+#include <mutex>
+
 namespace nanort {
 
 // Parallelized BVH build is not yet fully tested,
@@ -1079,51 +1083,40 @@ inline bool FindCutFromBinBuffer(T *cut_pos,        // [out] xyz
   return true;
 }
 
-#ifdef _OPENMP
 template <typename T, class P>
 void ComputeBoundingBoxOMP(real3<T> *bmin, real3<T> *bmax,
                            const unsigned int *indices, unsigned int left_index,
                            unsigned int right_index, const P &p) {
   { p.BoundingBox(bmin, bmax, indices[left_index]); }
 
-  T local_bmin[3] = {(*bmin)[0], (*bmin)[1], (*bmin)[2]};
-  T local_bmax[3] = {(*bmax)[0], (*bmax)[1], (*bmax)[2]};
+  std::mutex mutex;
+  ospray::parallel_for(right_index - left_index, [&](int taskId) {
+    T local_bmin[3] = {(*bmin)[0], (*bmin)[1], (*bmin)[2]};
+    T local_bmax[3] = {(*bmax)[0], (*bmax)[1], (*bmax)[2]};
 
-  unsigned int n = right_index - left_index;
+    int i = taskId + left_index;
+    unsigned int idx = indices[i];
 
-#pragma omp parallel firstprivate(local_bmin, local_bmax) if (n > (1024 * 128))
-  {
-#pragma omp for
-    for (int i = left_index; i < right_index; i++) {  // for each faces
-      unsigned int idx = indices[i];
-
-      real3<T> bbox_min, bbox_max;
-      p.BoundingBox(&bbox_min, &bbox_max, idx);
-      for (int k = 0; k < 3; k++) {  // xyz
-        if ((*bmin)[k] > bbox_min[k]) (*bmin)[k] = bbox_min[k];
-        if ((*bmax)[k] < bbox_max[k]) (*bmax)[k] = bbox_max[k];
-      }
+    real3<T> bbox_min, bbox_max;
+    p.BoundingBox(&bbox_min, &bbox_max, idx);
+    for (int k = 0; k < 3; k++) {  // xyz
+      if ((*bmin)[k] > bbox_min[k]) (*bmin)[k] = bbox_min[k];
+      if ((*bmax)[k] < bbox_max[k]) (*bmax)[k] = bbox_max[k];
     }
 
-#pragma omp critical
-    {
-      for (int k = 0; k < 3; k++) {
-        if (local_bmin[k] < (*bmin)[k]) {
-          {
-            if (local_bmin[k] < (*bmin)[k]) (*bmin)[k] = local_bmin[k];
-          }
-        }
+    //NOTE(jda) - critical region...
+    std::lock_guard<std::mutex> lock(mutex);
+    for (int k = 0; k < 3; k++) {
+      if (local_bmin[k] < (*bmin)[k]) {
+        if (local_bmin[k] < (*bmin)[k]) (*bmin)[k] = local_bmin[k];
+      }
 
-        if (local_bmax[k] > (*bmax)[k]) {
-          {
-            if (local_bmax[k] > (*bmax)[k]) (*bmax)[k] = local_bmax[k];
-          }
-        }
+      if (local_bmax[k] > (*bmax)[k]) {
+        if (local_bmax[k] > (*bmax)[k]) (*bmax)[k] = local_bmax[k];
       }
     }
-  }
+  });
 }
-#endif
 
 template <typename T, class P>
 inline void ComputeBoundingBox(real3<T> *bmin, real3<T> *bmax,
@@ -1485,12 +1478,9 @@ bool BVHAccel<T, P, Pred, I>::Build(unsigned int num_primitives,
   //
   indices_.resize(n);
 
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
-  for (int i = 0; i < static_cast<int>(n); i++) {
+  ospray::parallel_for(n, [&](int i) {
     indices_[static_cast<size_t>(i)] = static_cast<unsigned int>(i);
-  }
+  });
 
   //
   // 2. Compute bounding box(optional).
@@ -1529,7 +1519,6 @@ bool BVHAccel<T, P, Pred, I>::Build(unsigned int num_primitives,
 //
 // 3. Build tree
 //
-#ifdef _OPENMP
 #if NANORT_ENABLE_PARALLEL_BUILD
 
   // Do parallel build for enoughly large dataset.
@@ -1544,13 +1533,12 @@ bool BVHAccel<T, P, Pred, I>::Build(unsigned int num_primitives,
         shallow_node_infos_.size());
     std::vector<BVHBuildStatistics> local_stats(shallow_node_infos_.size());
 
-#pragma omp parallel for
-    for (int i = 0; i < static_cast<int>(shallow_node_infos_.size()); i++) {
+    ospray::parallel_for(shallow_node_infos_.size(), [&](int i) {
       unsigned int left_idx = shallow_node_infos_[i].left_idx;
       unsigned int right_idx = shallow_node_infos_[i].right_idx;
       BuildTree(&(local_stats[i]), &(local_nodes[i]), left_idx, right_idx,
                 options.shallow_depth, p, pred);
-    }
+    });
 
     // Join local nodes
     for (int i = 0; i < static_cast<int>(local_nodes.size()); i++) {
@@ -1587,12 +1575,6 @@ bool BVHAccel<T, P, Pred, I>::Build(unsigned int num_primitives,
   }
 
 #else  // !NANORT_ENABLE_PARALLEL_BUILD
-  {
-    BuildTree(&stats_, &nodes_, 0, n,
-              /* root depth */ 0, p, pred);  // [0, n)
-  }
-#endif
-#else  // !_OPENMP
   {
     BuildTree(&stats_, &nodes_, 0, n,
               /* root depth */ 0, p, pred);  // [0, n)
