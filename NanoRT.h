@@ -29,17 +29,8 @@
 
 namespace ospray {
 
-#ifdef USE_CPP_INTERFACE
-  namespace cpp_renderer {
-#endif
-
-#ifdef USE_CPP_INTERFACE
-  struct NanoRT : public cpp_renderer::Geometry
-#else
   struct NanoRT : public Geometry
-#endif
   {
-
     NanoRT();
     std::string toString() const override;
     void finalize(Model *model) override;
@@ -78,18 +69,6 @@ namespace ospray {
                      nanort::TriangleMesh<float>,
                      nanort::TriangleSAHPred<float>,
                      nanort::TriangleIntersector<>> accel;
-
-#ifdef USE_CPP_INTERFACE
-    // ospray::cpp_renderer::Geometry interface ///////////////////////////////
-
-    void postIntersect(DifferentialGeometry &dg,
-                       const Ray &ray,
-                       int flags) const override;
-#endif
   };
-
-#ifdef USE_CPP_INTERFACE
-  } // ::ospray::cpp_renderer
-#endif
 
 } // ::ospray
