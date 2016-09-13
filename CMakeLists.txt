@@ -21,9 +21,9 @@ if (OSPRAY_MODULE_NANORT AND NOT THIS_IS_MIC)
   include_directories_ispc(${CMAKE_CURRENT_SOURCE_DIR})
 
   ospray_create_library(ospray_module_nanort
-    NanoRT.cpp
-    NanoRT.h
-    NanoRT.ispc
+    NanoRT_Geom.cpp
+    NanoRT_Geom.h
+    NanoRT_Geom.ispc
     nanort.h
     LINK
     ospray

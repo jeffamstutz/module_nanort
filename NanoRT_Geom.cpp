@@ -15,7 +15,7 @@
 // ======================================================================== //
 
 // ospray
-#include "NanoRT.h"
+#include "NanoRT_Geom.h"
 #include "ospray/common/Model.h"
 #include "../include/ospray/ospray.h"
 // embree
