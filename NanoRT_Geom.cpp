@@ -22,7 +22,10 @@
 #include "embree2/rtcore.h"
 #include "embree2/rtcore_scene.h"
 #include "embree2/rtcore_geometry.h"
-#include "embree2/rtcore_ray.h"
+
+//NOTE(jda) - Use a copy of rtcore_ray.h which works with earlier version of
+//            Embree (e.g. 2.7.1 packaged with OSPRay source)
+#include "rtcore_ray.h"
 
 #include "NanoRT_ispc.h"
 

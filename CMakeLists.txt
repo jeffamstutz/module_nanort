@@ -25,6 +25,7 @@ if (OSPRAY_MODULE_NANORT AND NOT THIS_IS_MIC)
     NanoRT_Geom.h
     NanoRT_Geom.ispc
     nanort.h
+    rtcore_ray.h
     LINK
     ospray
   )
