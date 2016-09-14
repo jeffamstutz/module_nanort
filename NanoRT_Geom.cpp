@@ -27,7 +27,7 @@
 //            Embree (e.g. 2.7.1 packaged with OSPRay source)
 #include "rtcore_ray.h"
 
-#include "NanoRT_ispc.h"
+#include "NanoRT_Geom_ispc.h"
 
 namespace ospray {
 
