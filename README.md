@@ -2,7 +2,8 @@ NanoRT OSPRay Module
 ====================
 
 An OSPRay module which forwards ray intersections to 
-NanoRT(https://github.com/lighttransport/nanort).
+NanoRT(https://github.com/lighttransport/nanort). This module
+is written to work with OSPRay's ```devel``` branch.
 
 Build/Run Instructions
 ----------------------
