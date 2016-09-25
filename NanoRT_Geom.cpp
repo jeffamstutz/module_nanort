@@ -32,6 +32,33 @@
 namespace ospray {
 
 template<typename T>
+void calcGeometricNormal(T N[3], const T* v0, const T* v1, const T* v2)
+{
+  T v10[3];
+  T v20[3];
+
+  v10[0] = v1[0] - v0[0];
+  v10[1] = v1[1] - v0[1];
+  v10[2] = v1[2] - v0[2];
+
+  v20[0] = v2[0] - v0[0];
+  v20[1] = v2[1] - v0[1];
+  v20[2] = v2[2] - v0[2];
+  
+  N[0] = v20[1] * v10[2] - v20[2] * v10[1];
+  N[1] = v20[2] * v10[0] - v20[0] * v10[2];
+  N[2] = v20[0] * v10[1] - v20[1] * v10[0];
+
+  T len2 = N[0] * N[0] + N[1] * N[1] + N[2] * N[2];
+  if (len2 > 1.0e-6) { // @fixme { set proper eps }
+    T len = std::sqrt(len2);
+    N[0] /= len;
+    N[1] /= len;
+    N[2] /= len;
+  }
+}
+
+template<typename T>
 void getRay(const T& rays, RTCRay &ray, int i)
 {
   ray.org[0] = rays.orgx[i];
@@ -117,10 +144,20 @@ static void traceRay(const NanoRT &nrt, RTCRay &_ray)
     _ray.u = triangle_intersecter.intersection.u;
     _ray.v = triangle_intersecter.intersection.v;
 
-    // TODO: set normal...
-    _ray.Ng[0]  = -ray.dir[0];
-    _ray.Ng[1]  = -ray.dir[1];
-    _ray.Ng[2]  = -ray.dir[2];
+    // Compute geometric normal.
+    const float *vertices = nrt.vertex;
+    const unsigned int *indices = nrt.uindex.get();
+
+    unsigned int i0 = indices[3 * _ray.primID + 0];
+    unsigned int i1 = indices[3 * _ray.primID + 1];
+    unsigned int i2 = indices[3 * _ray.primID + 2];
+
+    float Ng[3];
+    calcGeometricNormal(Ng, &nrt.vertex[i0 * nrt.vtxSize], &nrt.vertex[i1 * nrt.vtxSize], &nrt.vertex[i2 * nrt.vtxSize]);
+
+    _ray.Ng[0]  = Ng[0];
+    _ray.Ng[1]  = Ng[1];
+    _ray.Ng[2]  = Ng[2];
   }
 }
 
