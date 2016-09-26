@@ -158,7 +158,11 @@ static void traceRay(const NanoRT &nrt, RTCRay &_ray)
     _ray.Ng[0]  = Ng[0];
     _ray.Ng[1]  = Ng[1];
     _ray.Ng[2]  = Ng[2];
-  }
+  } else {
+		// Mark this ray invalid.
+    _ray.geomID = RTC_INVALID_GEOMETRY_ID;
+	}
+	
 }
 
 static void nanortIntersectFunc(const NanoRT* nrts,
