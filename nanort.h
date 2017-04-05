@@ -43,7 +43,7 @@ THE SOFTWARE.
 #include <vector>
 
 //ospray
-#include "common/tasking/parallel_for.h"
+#include "ospcommon/tasking/parallel_for.h"
 #include <mutex>
 
 namespace nanort {
