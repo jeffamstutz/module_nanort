@@ -1090,7 +1090,7 @@ void ComputeBoundingBoxOMP(real3<T> *bmin, real3<T> *bmax,
   { p.BoundingBox(bmin, bmax, indices[left_index]); }
 
   std::mutex mutex;
-  ospray::parallel_for(right_index - left_index, [&](int taskId) {
+  ospcommon::tasking::parallel_for(right_index - left_index, [&](int taskId) {
     T local_bmin[3] = {(*bmin)[0], (*bmin)[1], (*bmin)[2]};
     T local_bmax[3] = {(*bmax)[0], (*bmax)[1], (*bmax)[2]};
 
@@ -1478,7 +1478,7 @@ bool BVHAccel<T, P, Pred, I>::Build(unsigned int num_primitives,
   //
   indices_.resize(n);
 
-  ospray::parallel_for(n, [&](int i) {
+  ospcommon::tasking::parallel_for(n, [&](int i) {
     indices_[static_cast<size_t>(i)] = static_cast<unsigned int>(i);
   });
 
@@ -1533,7 +1533,7 @@ bool BVHAccel<T, P, Pred, I>::Build(unsigned int num_primitives,
         shallow_node_infos_.size());
     std::vector<BVHBuildStatistics> local_stats(shallow_node_infos_.size());
 
-    ospray::parallel_for(shallow_node_infos_.size(), [&](int i) {
+    ospcommon::tasking::parallel_for(shallow_node_infos_.size(), [&](int i) {
       unsigned int left_idx = shallow_node_infos_[i].left_idx;
       unsigned int right_idx = shallow_node_infos_[i].right_idx;
       BuildTree(&(local_stats[i]), &(local_nodes[i]), left_idx, right_idx,
